@@ -768,6 +768,7 @@ struct EventRowView: View {
     @ObservedObject var sessionTracker = SessionTracker.shared
     @ObservedObject var themeManager = ThemeManager.shared
     @State private var isSpinning = false
+    @State private var isPulsing = false
 
     private var isRunning: Bool {
         event.type == .notification && sessionTracker.isTracking(sessionId: event.sessionId)
@@ -813,6 +814,12 @@ struct EventRowView: View {
                 Circle()
                     .fill(iconColor.opacity(0.15))
                     .frame(width: 36, height: 36)
+                    .scaleEffect(isPulsing && isRunning ? 1.15 : 1.0)
+                    .opacity(isPulsing && isRunning ? 0.6 : 1.0)
+                    .animation(
+                        isRunning ? .easeInOut(duration: 0.8).repeatForever(autoreverses: true) : .default,
+                        value: isPulsing
+                    )
 
                 Image(systemName: iconName)
                     .foregroundColor(iconColor)
@@ -858,10 +865,14 @@ struct EventRowView: View {
                 .shadow(color: Color.black.opacity(0.04), radius: 3, x: 0, y: 1)
         )
         .onAppear {
-            if isRunning { isSpinning = true }
+            if isRunning {
+                isSpinning = true
+                isPulsing = true
+            }
         }
         .onChange(of: isRunning) { newValue in
             isSpinning = newValue
+            isPulsing = newValue
         }
     }
 
