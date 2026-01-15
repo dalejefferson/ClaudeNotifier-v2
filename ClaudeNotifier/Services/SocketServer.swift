@@ -13,6 +13,7 @@ import os.log
 
 extension Notification.Name {
     static let claudeEventReceived = Notification.Name("claudeEventReceived")
+    static let socketStatusChanged = Notification.Name("socketStatusChanged")
 }
 
 // MARK: - SocketServer
@@ -119,6 +120,7 @@ final class SocketServer: ObservableObject {
         acceptSource = source
 
         isRunning = true
+        NotificationCenter.default.post(name: .socketStatusChanged, object: nil)
         logger.info("Socket server listening at \(Self.socketPath)")
     }
 
@@ -142,6 +144,7 @@ final class SocketServer: ObservableObject {
 
         Task { @MainActor in
             self.isRunning = false
+            NotificationCenter.default.post(name: .socketStatusChanged, object: nil)
         }
     }
 

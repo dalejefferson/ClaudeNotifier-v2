@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var notificationWindow: NSWindow?
     private var eventObserver: NSObjectProtocol?
 
+
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -39,6 +40,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] notification in
             guard let event = notification.object as? ClaudeEvent else { return }
             self?.handleClaudeEvent(event)
+        }
+
+        // Make MenuBarExtra window draggable
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            self?.makeMenuBarWindowDraggable()
+        }
+    }
+
+    private func makeMenuBarWindowDraggable() {
+        // Find the MenuBarExtra window and make it draggable
+        for window in NSApp.windows {
+            if window.title.isEmpty && window.level == .popUpMenu {
+                window.isMovableByWindowBackground = true
+                window.level = .floating
+                window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            }
         }
     }
 
@@ -73,6 +90,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .sessionStart:
             // Record session start time, no notification
             sessionTracker.recordStart(sessionId: event.sessionId, timestamp: event.timestamp)
+            // Trigger stats refresh for model detection
+            StatsReader.shared.forceRefresh()
             return
 
         case .notification:
@@ -83,8 +102,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fallthrough
 
         case .subagentStop:
-            // Track subagent completion - remove from active count
+            // Track subagent completion - remove from both tracking sets
             sessionTracker.recordSubagentStop(sessionId: event.sessionId)
+            sessionTracker.clearSession(sessionId: event.sessionId)
             // Don't show notification for subagent completions
             return
 
@@ -194,4 +214,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Play audio alert
         NSSound.beep()
     }
+
 }
