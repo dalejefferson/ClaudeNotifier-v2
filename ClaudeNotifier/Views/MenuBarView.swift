@@ -288,6 +288,50 @@ struct MenuBarView: View {
             Text(socketServer.isRunning ? "Listening" : "Not Running")
                 .font(.headline)
 
+            // Model badge
+            if let usage = statsReader.currentUsage {
+                HStack(spacing: 4) {
+                    Image(systemName: "cpu")
+                        .font(.system(size: 10))
+                    Text(usage.shortModelName)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .foregroundColor(.purple)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.purple.opacity(0.12))
+                .cornerRadius(6)
+            }
+
+            // Tasks badge
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 10))
+                Text("\(todayStats.taskCount)")
+                    .font(.caption)
+                    .fontWeight(.medium)
+            }
+            .foregroundColor(.green)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.green.opacity(0.12))
+            .cornerRadius(6)
+
+            // Agents badge
+            HStack(spacing: 4) {
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 10))
+                Text("\(sessionTracker.totalActiveAgentCount)")
+                    .font(.caption)
+                    .fontWeight(.medium)
+            }
+            .foregroundColor(.orange)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.orange.opacity(0.12))
+            .cornerRadius(6)
+
             Spacer()
 
             // Show animated indicator when Claude is running
@@ -343,44 +387,6 @@ struct MenuBarView: View {
             .buttonStyle(.plain)
 
             if !isCurrentSessionCollapsed {
-            // First row: Model and Tokens badges
-            HStack(spacing: 12) {
-                // Model badge - purple
-                HStack(spacing: 6) {
-                    Image(systemName: "cpu")
-                        .foregroundColor(.purple)
-                        .font(.caption)
-                    Text(usage.shortModelName)
-                        .font(.system(.caption, design: .rounded))
-                        .fontWeight(.semibold)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.purple.opacity(0.1))
-                .cornerRadius(6)
-
-                // Tokens badge - blue
-                HStack(spacing: 6) {
-                    Image(systemName: "text.word.spacing")
-                        .foregroundColor(.blue)
-                        .font(.caption)
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(usage.formattedTokens)
-                            .font(.system(.caption, design: .rounded))
-                            .fontWeight(.semibold)
-                        Text("tokens")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.blue.opacity(0.1))
-                .cornerRadius(6)
-
-                Spacer()
-            }
-
             // Usage Progress Bars
             VStack(spacing: 12) {
                 if rateLimitFetcher.isLoading && rateLimitFetcher.fiveHourResetsAt == nil {
@@ -409,19 +415,6 @@ struct MenuBarView: View {
                         label: "7-Day Usage",
                         resetTime: sevenDayResetTime
                     )
-                }
-            }
-
-            // Third row: Active agents badge (only when agents running)
-            if sessionTracker.totalActiveAgentCount > 0 {
-                HStack(spacing: 12) {
-                    StatBadge(
-                        icon: "person.2.fill",
-                        value: "\(sessionTracker.totalActiveAgentCount)",
-                        label: sessionTracker.totalActiveAgentCount == 1 ? "Agent" : "Agents",
-                        color: .orange
-                    )
-                    Spacer()
                 }
             }
             }
@@ -496,37 +489,14 @@ struct MenuBarView: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 
-            HStack(spacing: 16) {
-                StatBadge(
-                    icon: "checkmark.circle.fill",
-                    value: "\(todayStats.taskCount)",
-                    label: "Tasks",
-                    color: .green
-                )
-
-                StatBadge(
-                    icon: "clock.fill",
-                    value: todayStats.totalDurationFormatted,
-                    label: "Total",
-                    color: .blue
-                )
-
-                if todayStats.taskCount > 0 {
-                    StatBadge(
-                        icon: "gauge.medium",
-                        value: todayStats.averageDurationFormatted,
-                        label: "Avg",
-                        color: .orange
-                    )
-                }
-
-                Spacer()
-            }
-
             // Activity chart
             if !hourlyActivityData.isEmpty && hourlyActivityData.contains(where: { $0 > 0 }) {
                 ActivitySparkline(hourlyData: hourlyActivityData)
-                    .padding(.top, 8)
+            } else {
+                Text("No activity yet")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, 8)
             }
         }
     }

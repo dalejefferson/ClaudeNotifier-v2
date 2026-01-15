@@ -85,14 +85,32 @@ final class StatsReader: ObservableObject {
         // Initial load
         refresh()
 
-        // Refresh every 60 seconds (was 30s)
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        // Refresh every 15 seconds for faster model updates
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             self?.refresh()
+        }
+
+        // Also refresh when Claude events are received (for immediate model updates)
+        NotificationCenter.default.addObserver(
+            forName: .claudeEventReceived,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            // Small delay to let Claude Code update the stats file
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self?.forceRefresh()
+            }
         }
     }
 
     deinit {
         refreshTimer?.invalidate()
+    }
+
+    /// Force refresh without checking modification date
+    func forceRefresh() {
+        lastModificationDate = nil
+        refresh()
     }
 
     func refresh() {
