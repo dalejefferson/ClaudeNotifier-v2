@@ -73,6 +73,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .sessionStart:
             // Record session start time, no notification
             sessionTracker.recordStart(sessionId: event.sessionId, timestamp: event.timestamp)
+            // Trigger stats refresh for model detection
+            StatsReader.shared.forceRefresh()
             return
 
         case .notification:
@@ -83,8 +85,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fallthrough
 
         case .subagentStop:
-            // Track subagent completion - remove from active count
+            // Track subagent completion - remove from both tracking sets
             sessionTracker.recordSubagentStop(sessionId: event.sessionId)
+            sessionTracker.clearSession(sessionId: event.sessionId)
             // Don't show notification for subagent completions
             return
 

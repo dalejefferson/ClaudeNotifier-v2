@@ -85,8 +85,8 @@ final class StatsReader: ObservableObject {
         // Initial load
         refresh()
 
-        // Refresh every 15 seconds for faster model updates
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+        // Refresh every 5 seconds for faster model updates
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             self?.refresh()
         }
 
