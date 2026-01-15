@@ -27,6 +27,7 @@ struct MenuBarView: View {
     @ObservedObject var usageLimitTracker = UsageLimitTracker.shared
     @ObservedObject var rateLimitFetcher = RateLimitFetcher.shared
     @ObservedObject var themeManager = ThemeManager.shared
+    @ObservedObject var layoutManager = LayoutManager.shared
     var onEventSelected: ((ClaudeEvent) -> Void)?
 
     @State private var isPulsing = false
@@ -83,55 +84,68 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Tab Bar
+            // FIXED: Tab Bar (always at top)
             tabBar
 
-            // Status Header
-            statusHeader
+            if layoutManager.isEditMode {
+                // Edit mode UI
+                LayoutEditView()
+            } else {
+                // Dynamic sections based on template
+                ForEach(layoutManager.activeTemplate.visibleSections) { section in
+                    renderSection(section)
+                }
 
-            // Model & Usage Section
-            if let usage = statsReader.currentUsage {
-                Divider()
-                    .padding(.vertical, 8)
-
-                modelUsageSection(usage)
+                // Clear History Button (conditional)
+                if !socketServer.recentEvents.isEmpty &&
+                   layoutManager.activeTemplate.visibleSections.contains(where: { $0.type == .recentEvents }) {
+                    clearHistoryButton
+                }
             }
 
             Divider()
                 .padding(.vertical, 8)
 
-            // Today's Stats Section
-            todayStatsSection
-
-            Divider()
-                .padding(.vertical, 8)
-
-            // Recent Events Section
-            recentEventsSection
-
-            // Clear History Button
-            if !socketServer.recentEvents.isEmpty {
-                clearHistoryButton
-            }
-
-            Divider()
-                .padding(.vertical, 8)
-
-            // Settings Section
+            // FIXED: Settings Section (always visible)
             settingsSection
 
             Divider()
                 .padding(.vertical, 8)
 
-            // Project Footer
+            // FIXED: Project Footer
             projectFooter
 
-            // Quit Button
+            // FIXED: Quit Button (always at bottom)
             quitButton
         }
         .padding(12)
         .frame(width: 420)
         .background(themeManager.palette.background)
+    }
+
+    // MARK: - Dynamic Section Rendering
+
+    @ViewBuilder
+    private func renderSection(_ section: LayoutSection) -> some View {
+        switch section.type {
+        case .statusHeader:
+            statusHeader
+            Divider().padding(.vertical, 8)
+
+        case .currentSession:
+            if let usage = statsReader.currentUsage {
+                modelUsageSection(usage)
+                Divider().padding(.vertical, 8)
+            }
+
+        case .todayStats:
+            todayStatsSection
+            Divider().padding(.vertical, 8)
+
+        case .recentEvents:
+            recentEventsSection
+            Divider().padding(.vertical, 8)
+        }
     }
 
     // MARK: - Tab Bar
@@ -616,6 +630,22 @@ struct MenuBarView: View {
 
             // Theme Picker
             themePicker
+
+            // Layout Customization Button
+            Button(action: { layoutManager.isEditMode = true }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "slider.horizontal.3")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                    Text("Customize Layout")
+                        .font(.caption)
+                    Spacer()
+                    Text(layoutManager.activeTemplate.name)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
 
             // Show status message if there's an issue
             if launchManager.requiresUserAction {
