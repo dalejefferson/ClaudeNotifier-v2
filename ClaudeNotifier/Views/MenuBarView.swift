@@ -84,6 +84,17 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Drag handle indicator
+            HStack {
+                Spacer()
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 40, height: 4)
+                Spacer()
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+
             // FIXED: Tab Bar (always at top)
             tabBar
 

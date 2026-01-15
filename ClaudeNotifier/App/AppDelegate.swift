@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var notificationWindow: NSWindow?
     private var eventObserver: NSObjectProtocol?
 
+
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -39,6 +40,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] notification in
             guard let event = notification.object as? ClaudeEvent else { return }
             self?.handleClaudeEvent(event)
+        }
+
+        // Make MenuBarExtra window draggable
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            self?.makeMenuBarWindowDraggable()
+        }
+    }
+
+    private func makeMenuBarWindowDraggable() {
+        // Find the MenuBarExtra window and make it draggable
+        for window in NSApp.windows {
+            if window.title.isEmpty && window.level == .popUpMenu {
+                window.isMovableByWindowBackground = true
+                window.level = .floating
+                window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            }
         }
     }
 
@@ -197,4 +214,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Play audio alert
         NSSound.beep()
     }
+
 }
