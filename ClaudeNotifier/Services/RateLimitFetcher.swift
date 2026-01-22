@@ -39,6 +39,10 @@ class RateLimitFetcher: ObservableObject {
     private let maxInterval: TimeInterval = 300.0
     private var consecutiveErrors = 0
 
+    // Synchronization to prevent concurrent fetches and Keychain access
+    private let fetchQueue = DispatchQueue(label: "com.claudenotifier.ratelimit.fetch")
+    private var isFetching = false  // Protected by fetchQueue
+
     private var cachedAccessToken: String?
     private var tokenLastFetched: Date?
     private let tokenCacheInterval: TimeInterval = 3600  // Cache token for 1 hour
@@ -146,15 +150,28 @@ class RateLimitFetcher: ObservableObject {
     // MARK: - Private Methods
 
     private func fetchUsageData() {
-        guard !isLoading else { return }
+        // Use synchronous check-and-set to prevent concurrent fetches
+        var shouldProceed = false
+        fetchQueue.sync {
+            if !isFetching {
+                isFetching = true
+                shouldProceed = true
+            }
+        }
+
+        guard shouldProceed else {
+            print("RateLimitFetcher: Skipping fetch - already in progress")
+            return
+        }
 
         DispatchQueue.main.async {
             self.isLoading = true
             self.lastError = nil
         }
 
-        // Get access token from Keychain
+        // Get access token from Keychain (synchronized to prevent multiple auth prompts)
         guard let accessToken = getAccessTokenFromKeychain() else {
+            fetchQueue.sync { self.isFetching = false }
             DispatchQueue.main.async {
                 self.isLoading = false
                 self.lastError = "Failed to retrieve access token from Keychain"
@@ -205,6 +222,8 @@ class RateLimitFetcher: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink(
                 receiveCompletion: { [weak self] completion in
+                    // Reset fetch flag to allow future fetches
+                    self?.fetchQueue.sync { self?.isFetching = false }
                     self?.isLoading = false
                     if case .failure(let error) = completion {
                         self?.lastError = error.localizedDescription
@@ -279,13 +298,21 @@ class RateLimitFetcher: ObservableObject {
     // MARK: - Keychain Access
 
     private func getAccessTokenFromKeychain() -> String? {
-        // Return cached token if still valid
-        if let cached = cachedAccessToken,
-           let lastFetched = tokenLastFetched,
-           Date().timeIntervalSince(lastFetched) < tokenCacheInterval {
-            return cached
-        }
+        // Synchronize Keychain access to prevent multiple auth prompts
+        return fetchQueue.sync {
+            // Return cached token if still valid
+            if let cached = cachedAccessToken,
+               let lastFetched = tokenLastFetched,
+               Date().timeIntervalSince(lastFetched) < tokenCacheInterval {
+                return cached
+            }
 
+            return fetchTokenFromKeychain()
+        }
+    }
+
+    /// Internal method that actually accesses Keychain - must be called within fetchQueue
+    private func fetchTokenFromKeychain() -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: keychainService,
