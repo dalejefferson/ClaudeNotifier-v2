@@ -9,6 +9,7 @@ import SwiftUI
 
 struct NotificationWindowView: View {
     let event: ClaudeEvent
+    var isIdleReminder: Bool = false
     let onDismiss: () -> Void
 
     @ObservedObject var themeManager = ThemeManager.shared
@@ -23,6 +24,9 @@ struct NotificationWindowView: View {
     // MARK: - Computed Properties
 
     private var iconName: String {
+        if isIdleReminder {
+            return "clock.badge.exclamationmark"
+        }
         switch event.type {
         case .stop:
             if event.stopReason == .interrupt {
@@ -42,29 +46,35 @@ struct NotificationWindowView: View {
     }
 
     private var iconColor: Color {
+        if isIdleReminder {
+            return themeManager.effectivePalette.warning
+        }
         switch event.type {
         case .stop, .subagentStop:
             switch event.stopReason {
             case .endTurn, .stopTool:
-                return themeManager.palette.success
+                return themeManager.effectivePalette.success
             case .interrupt:
-                return themeManager.palette.active
+                return themeManager.effectivePalette.active
             case .maxTurns:
-                return themeManager.palette.warning
+                return themeManager.effectivePalette.warning
             case .none:
-                return themeManager.palette.success
+                return themeManager.effectivePalette.success
             }
         case .notification:
             if event.matcher == .permissionPrompt {
-                return themeManager.palette.warning
+                return themeManager.effectivePalette.warning
             }
-            return themeManager.palette.primary
+            return themeManager.effectivePalette.primary
         case .sessionStart:
-            return themeManager.palette.primary
+            return themeManager.effectivePalette.primary
         }
     }
 
     private var headerTitle: String {
+        if isIdleReminder {
+            return "Claude needs input"
+        }
         switch event.type {
         case .stop:
             switch event.stopReason {
@@ -119,21 +129,21 @@ struct NotificationWindowView: View {
                 HStack {
                     Text(headerTitle)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(themeManager.palette.textPrimary)
+                        .foregroundColor(themeManager.effectivePalette.textPrimary)
 
                     Spacer()
 
                     if let duration = durationText {
                         Text(duration)
                             .font(.system(size: 11))
-                            .foregroundColor(themeManager.palette.textTertiary)
+                            .foregroundColor(themeManager.effectivePalette.textTertiary)
                     }
                 }
 
                 // Description
                 Text(descriptionText)
                     .font(.system(size: 13))
-                    .foregroundColor(themeManager.palette.textSecondary)
+                    .foregroundColor(themeManager.effectivePalette.textSecondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -196,7 +206,7 @@ struct NotificationWindowView: View {
             Button(action: onDismiss) {
                 Text("Dismiss")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(themeManager.palette.textSecondary)
+                    .foregroundColor(themeManager.effectivePalette.textSecondary)
             }
             .buttonStyle(.plain)
             .onHover { hovering in
@@ -214,23 +224,29 @@ struct NotificationWindowView: View {
         Button(action: onDismiss) {
             Image(systemName: "xmark")
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(themeManager.palette.textTertiary)
+                .foregroundColor(themeManager.effectivePalette.textTertiary)
                 .frame(width: 24, height: 24)
                 .background(
                     Circle()
-                        .fill(themeManager.palette.border.opacity(isHovering ? 0.5 : 0))
+                        .fill(themeManager.effectivePalette.border.opacity(isHovering ? 0.5 : 0))
                 )
         }
         .buttonStyle(.plain)
-        .keyboardShortcut(.return, modifiers: [])
     }
 
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: cardCornerRadius)
-            .fill(themeManager.palette.surface)
+            .fill(isIdleReminder
+                ? themeManager.effectivePalette.warning.opacity(0.08)
+                : themeManager.effectivePalette.surface)
             .overlay(
                 RoundedRectangle(cornerRadius: cardCornerRadius)
-                    .stroke(themeManager.palette.border, lineWidth: 1)
+                    .stroke(
+                        isIdleReminder
+                            ? themeManager.effectivePalette.warning.opacity(0.4)
+                            : themeManager.effectivePalette.border,
+                        lineWidth: 1
+                    )
             )
     }
 

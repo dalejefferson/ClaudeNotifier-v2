@@ -45,7 +45,7 @@ class RateLimitFetcher: ObservableObject {
 
     private var cachedAccessToken: String?
     private var tokenLastFetched: Date?
-    private let tokenCacheInterval: TimeInterval = 3600  // Cache token for 1 hour
+    private let tokenCacheInterval: TimeInterval = 10800  // Cache token for 3 hours
 
     private let apiEndpoint = "https://api.anthropic.com/api/oauth/usage"
     private let keychainService = "Claude Code-credentials"
@@ -327,7 +327,7 @@ class RateLimitFetcher: ObservableObject {
               let data = result as? Data else {
             print("RateLimitFetcher: Failed to retrieve Keychain item. Status: \(status)")
             // Try reading from local cache file as fallback
-            return getTokenFromLocalCache()
+            return cacheAndReturn(getTokenFromLocalCache())
         }
 
         // Parse the JSON to extract the access token
@@ -344,8 +344,17 @@ class RateLimitFetcher: ObservableObject {
             return nil
         } catch {
             print("RateLimitFetcher: Failed to parse Keychain credentials: \(error)")
-            return getTokenFromLocalCache()
+            return cacheAndReturn(getTokenFromLocalCache())
         }
+    }
+
+    /// Caches a token in memory so we don't retry Keychain on every poll cycle.
+    private func cacheAndReturn(_ token: String?) -> String? {
+        if let token = token {
+            cachedAccessToken = token
+            tokenLastFetched = Date()
+        }
+        return token
     }
 
     // MARK: - Local Token Cache

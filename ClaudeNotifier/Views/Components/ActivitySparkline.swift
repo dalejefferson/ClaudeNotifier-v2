@@ -23,7 +23,7 @@ struct ActivitySparkline: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Activity Today")
                 .font(.system(size: 11))
-                .foregroundColor(themeManager.palette.textSecondary)
+                .foregroundColor(themeManager.effectivePalette.textSecondary)
 
             GeometryReader { geometry in
                 let width = geometry.size.width
@@ -54,8 +54,8 @@ struct ActivitySparkline: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                themeManager.palette.primary.opacity(0.25),
-                                themeManager.palette.primary.opacity(0.05)
+                                themeManager.effectivePalette.primary.opacity(0.25),
+                                themeManager.effectivePalette.primary.opacity(0.05)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -78,7 +78,7 @@ struct ActivitySparkline: View {
                         }
                     }
                     .stroke(
-                        themeManager.palette.primary,
+                        themeManager.effectivePalette.primary,
                         style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
                     )
 
@@ -88,7 +88,7 @@ struct ActivitySparkline: View {
                         let y = height - (value * height * 0.9)
 
                         Circle()
-                            .fill(themeManager.palette.primary)
+                            .fill(themeManager.effectivePalette.primary)
                             .frame(width: 4, height: 4)
                             .position(x: x, y: y)
                     }
@@ -109,12 +109,12 @@ struct ActivitySparkline: View {
                 Text("Now")
             }
             .font(.system(size: 9))
-            .foregroundColor(themeManager.palette.textTertiary)
+            .foregroundColor(themeManager.effectivePalette.textTertiary)
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(themeManager.palette.surface)
+                .fill(themeManager.effectivePalette.surface)
                 .shadow(color: Color.black.opacity(0.03), radius: 2, y: 1)
         )
     }

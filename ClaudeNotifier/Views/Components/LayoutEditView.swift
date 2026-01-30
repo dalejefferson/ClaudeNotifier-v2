@@ -14,7 +14,7 @@ struct LayoutEditView: View {
             HStack {
                 Text("Customize Layout")
                     .font(.headline)
-                    .foregroundColor(themeManager.palette.textPrimary)
+                    .foregroundColor(themeManager.effectivePalette.textPrimary)
 
                 Spacer()
 
@@ -22,7 +22,7 @@ struct LayoutEditView: View {
                     Text("Done")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundColor(themeManager.palette.primary)
+                        .foregroundColor(themeManager.effectivePalette.primary)
                 }
                 .buttonStyle(.plain)
             }
@@ -43,7 +43,7 @@ struct LayoutEditView: View {
             templateActions
         }
         .padding(12)
-        .background(themeManager.palette.surface)
+        .background(themeManager.effectivePalette.surface)
         .cornerRadius(12)
         .sheet(isPresented: $showingNewTemplateSheet) {
             newTemplateSheet
@@ -54,7 +54,7 @@ struct LayoutEditView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Template")
                 .font(.caption)
-                .foregroundColor(themeManager.palette.textSecondary)
+                .foregroundColor(themeManager.effectivePalette.textSecondary)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -75,11 +75,11 @@ struct LayoutEditView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Sections")
                 .font(.caption)
-                .foregroundColor(themeManager.palette.textSecondary)
+                .foregroundColor(themeManager.effectivePalette.textSecondary)
 
             Text("Drag to reorder, tap eye to show/hide")
                 .font(.caption2)
-                .foregroundColor(themeManager.palette.textTertiary)
+                .foregroundColor(themeManager.effectivePalette.textTertiary)
 
             ForEach(layoutManager.activeTemplate.sortedSections) { section in
                 SectionEditRow(section: section)
@@ -95,7 +95,7 @@ struct LayoutEditView: View {
                     Text("New Template")
                 }
                 .font(.caption)
-                .foregroundColor(themeManager.palette.primary)
+                .foregroundColor(themeManager.effectivePalette.primary)
             }
             .buttonStyle(.plain)
 
@@ -148,12 +148,12 @@ struct SectionEditRow: View {
             // Drag handle
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 12))
-                .foregroundColor(themeManager.palette.textTertiary)
+                .foregroundColor(themeManager.effectivePalette.textTertiary)
 
             // Section icon
             Image(systemName: section.type.icon)
                 .font(.caption)
-                .foregroundColor(section.isVisible ? themeManager.palette.primary : themeManager.palette.textTertiary)
+                .foregroundColor(section.isVisible ? themeManager.effectivePalette.primary : themeManager.effectivePalette.textTertiary)
                 .frame(width: 20)
 
             // Section name
@@ -161,11 +161,11 @@ struct SectionEditRow: View {
                 Text(section.type.displayName)
                     .font(.caption)
                     .fontWeight(.medium)
-                    .foregroundColor(section.isVisible ? themeManager.palette.textPrimary : themeManager.palette.textTertiary)
+                    .foregroundColor(section.isVisible ? themeManager.effectivePalette.textPrimary : themeManager.effectivePalette.textTertiary)
 
                 Text(section.type.description)
                     .font(.caption2)
-                    .foregroundColor(themeManager.palette.textTertiary)
+                    .foregroundColor(themeManager.effectivePalette.textTertiary)
                     .lineLimit(1)
             }
 
@@ -177,7 +177,7 @@ struct SectionEditRow: View {
             }) {
                 Image(systemName: section.isVisible ? "eye.fill" : "eye.slash")
                     .font(.caption)
-                    .foregroundColor(section.isVisible ? themeManager.palette.success : themeManager.palette.textTertiary)
+                    .foregroundColor(section.isVisible ? themeManager.effectivePalette.success : themeManager.effectivePalette.textTertiary)
             }
             .buttonStyle(.plain)
         }
@@ -185,11 +185,11 @@ struct SectionEditRow: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isDropTarget ? themeManager.palette.primary.opacity(0.1) : themeManager.palette.background)
+                .fill(isDropTarget ? themeManager.effectivePalette.primary.opacity(0.1) : themeManager.effectivePalette.background)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(isDropTarget ? themeManager.palette.primary : Color.clear, lineWidth: 1)
+                .stroke(isDropTarget ? themeManager.effectivePalette.primary : Color.clear, lineWidth: 1)
         )
         .opacity(isDragging ? 0.5 : 1.0)
         .onDrag {
@@ -250,9 +250,9 @@ struct TemplateChip: View {
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(isSelected ? themeManager.palette.primary : themeManager.palette.background)
+                    .fill(isSelected ? themeManager.effectivePalette.primary : themeManager.effectivePalette.background)
             )
-            .foregroundColor(isSelected ? .white : themeManager.palette.textPrimary)
+            .foregroundColor(isSelected ? .white : themeManager.effectivePalette.textPrimary)
         }
         .buttonStyle(.plain)
         .contextMenu {

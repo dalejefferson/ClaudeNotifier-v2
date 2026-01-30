@@ -131,7 +131,7 @@ struct MenuBarView: View {
         }
         .padding(12)
         .frame(width: 420)
-        .background(themeManager.palette.background)
+        .background(themeManager.effectivePalette.background)
     }
 
     // MARK: - Dynamic Section Rendering
@@ -566,7 +566,7 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Theme")
                 .font(.caption)
-                .foregroundColor(themeManager.palette.textSecondary)
+                .foregroundColor(themeManager.effectivePalette.textSecondary)
 
             HStack(spacing: 10) {
                 ForEach(ColorPalette.allPalettes) { palette in
@@ -603,6 +603,22 @@ struct MenuBarView: View {
                         .foregroundColor(.secondary)
                         .font(.caption)
                     Text("Launch at Login")
+                        .font(.caption)
+                }
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+
+            // Dark Mode Toggle
+            Toggle(isOn: Binding(
+                get: { themeManager.isDarkMode },
+                set: { _ in themeManager.toggleDarkMode() }
+            )) {
+                HStack(spacing: 6) {
+                    Image(systemName: themeManager.isDarkMode ? "moon.fill" : "sun.max.fill")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                    Text("Dark Mode")
                         .font(.caption)
                 }
             }
@@ -723,10 +739,10 @@ struct StatBadge: View {
                 Text(value)
                     .font(.system(.subheadline, design: .rounded))
                     .fontWeight(.semibold)
-                    .foregroundColor(themeManager.palette.textPrimary)
+                    .foregroundColor(themeManager.effectivePalette.textPrimary)
                 Text(label)
                     .font(.caption2)
-                    .foregroundColor(themeManager.palette.textSecondary)
+                    .foregroundColor(themeManager.effectivePalette.textSecondary)
             }
         }
         .padding(.horizontal, 12)
@@ -815,12 +831,12 @@ struct EventRowView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(isRunning ? "Agent Running" : event.type.displayName)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(themeManager.palette.textPrimary)
+                    .foregroundColor(themeManager.effectivePalette.textPrimary)
 
                 if let taskSummary = event.taskSummary, !taskSummary.isEmpty {
                     Text(taskSummary)
                         .font(.caption)
-                        .foregroundColor(themeManager.palette.textSecondary)
+                        .foregroundColor(themeManager.effectivePalette.textSecondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
@@ -831,10 +847,10 @@ struct EventRowView: View {
             if let duration = event.duration {
                 Text(formatEventDuration(duration))
                     .font(.system(size: 12, design: .monospaced))
-                    .foregroundColor(themeManager.palette.textTertiary)
+                    .foregroundColor(themeManager.effectivePalette.textTertiary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(themeManager.palette.surface.opacity(0.8))
+                    .background(themeManager.effectivePalette.surface.opacity(0.8))
                     .cornerRadius(6)
             }
         }
@@ -842,7 +858,7 @@ struct EventRowView: View {
         .padding(.horizontal, 12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(themeManager.palette.surface)
+                .fill(themeManager.effectivePalette.surface)
                 .shadow(color: Color.black.opacity(0.04), radius: 3, x: 0, y: 1)
         )
         .onAppear {
@@ -899,7 +915,7 @@ struct TabButton: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? themeManager.palette.primary : themeManager.palette.surface)
+                .fill(isSelected ? themeManager.effectivePalette.primary : themeManager.effectivePalette.surface)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8)

@@ -17,11 +17,11 @@ struct UsageProgressBar: View {
 
     private var statusColor: Color {
         if remaining > 0.5 {
-            return themeManager.palette.success
+            return themeManager.effectivePalette.success
         } else if remaining > 0.2 {
-            return themeManager.palette.warning
+            return themeManager.effectivePalette.warning
         } else {
-            return themeManager.palette.critical
+            return themeManager.effectivePalette.critical
         }
     }
 
@@ -32,10 +32,10 @@ struct UsageProgressBar: View {
                 HStack(spacing: 4) {
                     Image(systemName: "gauge.medium")
                         .font(.system(size: 11))
-                        .foregroundColor(themeManager.palette.textSecondary)
+                        .foregroundColor(themeManager.effectivePalette.textSecondary)
                     Text(label)
                         .font(.system(size: 12))
-                        .foregroundColor(themeManager.palette.textSecondary)
+                        .foregroundColor(themeManager.effectivePalette.textSecondary)
                 }
 
                 Spacer()
@@ -50,7 +50,7 @@ struct UsageProgressBar: View {
                 ZStack(alignment: .leading) {
                     // Background track
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(themeManager.palette.border)
+                        .fill(themeManager.effectivePalette.border)
                         .frame(height: 8)
 
                     // Filled portion (shows remaining, not used)
@@ -71,7 +71,7 @@ struct UsageProgressBar: View {
             // Reset time
             Text("Resets in \(resetTime)")
                 .font(.system(size: 10))
-                .foregroundColor(themeManager.palette.textTertiary)
+                .foregroundColor(themeManager.effectivePalette.textTertiary)
         }
     }
 }

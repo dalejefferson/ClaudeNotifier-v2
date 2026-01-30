@@ -9,6 +9,14 @@
 import AppKit
 import SwiftUI
 
+// MARK: - NonKeyWindow
+
+/// A window that never becomes the key window, preventing keyboard focus theft.
+/// Users can keep typing in their active app while notifications appear.
+final class NonKeyWindow: NSWindow {
+    override var canBecomeKey: Bool { false }
+}
+
 // MARK: - AppDelegate
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -17,9 +25,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     let socketServer = SocketServer()
     private let sessionTracker = SessionTracker.shared
-    private var notificationWindow: NSWindow?
     private var eventObserver: NSObjectProtocol?
 
+    // Notification window stacking
+    private var notificationWindows: [NSWindow] = []
+    private let maxNotificationCount = 5
+    private let notificationSpacing: CGFloat = 10
+    private let notificationWindowWidth: CGFloat = 400
+    private let notificationWindowHeight: CGFloat = 180
+
+    // Deferred notification for when subagents are still active
+    private var pendingStopEvent: ClaudeEvent?
+
+    // Idle input reminder
+    private var idleReminderTimer: Timer?
+    private let idleReminderDelay: TimeInterval = 30.0
 
     // MARK: - Lifecycle
 
@@ -72,11 +92,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             socketServer.stop()
         }
         sessionTracker.save()
+        cancelIdleReminderTimer()
+        closeAllNotificationWindows()
     }
 
     // MARK: - Event Handling
 
     private func handleClaudeEvent(_ event: ClaudeEvent) {
+        // Any Claude activity cancels the idle reminder timer
+        cancelIdleReminderTimer()
+
         // Track subagents: if we see activity from an unknown session that isn't a main session start,
         // it's likely a subagent. Register it so we can count active agents.
         if event.type != .sessionStart && !event.sessionId.isEmpty {
@@ -105,7 +130,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Track subagent completion - remove from both tracking sets
             sessionTracker.recordSubagentStop(sessionId: event.sessionId)
             sessionTracker.clearSession(sessionId: event.sessionId)
-            // Don't show notification for subagent completions
+
+            // If this was the last subagent and we have a pending stop event, show it now
+            if sessionTracker.activeSubagentCount == 0, let pending = pendingStopEvent {
+                pendingStopEvent = nil
+                showNotificationWindow(for: pending)
+            }
             return
 
         case .stop:
@@ -135,38 +165,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         // Persist enriched event to history
                         EventStore.shared.save(event: finalEvent)
 
-                        // Show notification window
-                        self?.showNotificationWindow(for: finalEvent)
+                        self?.showOrDeferNotification(for: finalEvent)
                     }
                 }
             } else {
                 // No transcript parsing needed - save and show immediately
                 EventStore.shared.save(event: enrichedEvent)
-                showNotificationWindow(for: enrichedEvent)
+                showOrDeferNotification(for: enrichedEvent)
             }
+        }
+    }
+
+    // MARK: - Deferred Notification Logic
+
+    /// Shows the notification immediately if no subagents are active,
+    /// otherwise defers it until all subagents complete.
+    private func showOrDeferNotification(for event: ClaudeEvent) {
+        // Interrupts always show immediately
+        if event.stopReason == .interrupt {
+            showNotificationWindow(for: event)
+            return
+        }
+
+        // If subagents are still active, defer the notification
+        if sessionTracker.activeSubagentCount > 0 {
+            pendingStopEvent = event
+        } else {
+            showNotificationWindow(for: event)
         }
     }
 
     // MARK: - Window Management
 
-    private func showNotificationWindow(for event: ClaudeEvent) {
-        closeNotificationWindow()
-
-        let contentView = NotificationWindowView(event: event) { [weak self] in
-            self?.closeNotificationWindow()
+    private func showNotificationWindow(for event: ClaudeEvent, isIdleReminder: Bool = false) {
+        // Enforce max notification count - remove oldest if at limit
+        if notificationWindows.count >= maxNotificationCount {
+            let oldest = notificationWindows.removeFirst()
+            oldest.close()
         }
-        .padding(20) // Padding for shadow to render
 
-        // Window size: card width (360) + shadow padding (40) x estimated height
-        let windowWidth: CGFloat = 400
-        let windowHeight: CGFloat = 180
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight),
+        let window = NonKeyWindow(
+            contentRect: NSRect(x: 0, y: 0, width: notificationWindowWidth, height: notificationWindowHeight),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
+
+        let contentView = NotificationWindowView(event: event, isIdleReminder: isIdleReminder) { [weak self, weak window] in
+            guard let self = self, let window = window else { return }
+            self.dismissNotificationWindow(window)
+        }
+        .padding(20) // Padding for shadow to render
 
         // Configure borderless transparent window
         window.isOpaque = false
@@ -175,44 +224,82 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.level = .floating
         window.collectionBehavior = [.canJoinAllSpaces, .stationary]
         window.contentView = NSHostingView(rootView: contentView)
-
-        // Position in top-right corner
-        if let screen = NSScreen.main {
-            let screenFrame = screen.visibleFrame
-            let x = screenFrame.maxX - windowWidth - 10
-            let y = screenFrame.maxY - windowHeight - 10
-            window.setFrameOrigin(NSPoint(x: x, y: y))
-        }
-
         window.isReleasedWhenClosed = false
 
-        notificationWindow = window
-        stealFocus(window: window)
-    }
+        // Add to stack and position all windows
+        notificationWindows.append(window)
+        repositionNotificationWindows()
 
-    private func closeNotificationWindow() {
-        notificationWindow?.close()
-        notificationWindow = nil
-    }
+        // Show without stealing focus
+        presentNotification(window: window)
 
-    private func stealFocus(window: NSWindow) {
-        // Activate the application
-        NSApp.activate(ignoringOtherApps: true)
-
-        // Make window key and bring to front
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-
-        // Temporarily set to screen saver level
-        window.level = .screenSaver
-
-        // Reset to floating level after brief delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak window] in
-            window?.level = .floating
+        // Start idle timer for stop events (not for idle reminders themselves)
+        if event.type == .stop && !isIdleReminder {
+            startIdleReminderTimer()
         }
+    }
 
-        // Play audio alert
-        NSSound.beep()
+    private func dismissNotificationWindow(_ window: NSWindow) {
+        window.close()
+        notificationWindows.removeAll { $0 === window }
+        repositionNotificationWindows()
+    }
+
+    private func closeAllNotificationWindows() {
+        for window in notificationWindows {
+            window.close()
+        }
+        notificationWindows.removeAll()
+    }
+
+    /// Positions all notification windows stacked from top-right.
+    /// Newest notification (last in array) is at the top, older ones stack below.
+    private func repositionNotificationWindows() {
+        guard let screen = NSScreen.main else { return }
+        let screenFrame = screen.visibleFrame
+
+        for (index, window) in notificationWindows.enumerated() {
+            let stackIndex = notificationWindows.count - 1 - index
+            let x = screenFrame.maxX - notificationWindowWidth - 10
+            let y = screenFrame.maxY - notificationWindowHeight - 10
+                - (CGFloat(stackIndex) * (notificationWindowHeight + notificationSpacing))
+
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.25
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                window.animator().setFrameOrigin(NSPoint(x: x, y: y))
+            }
+        }
+    }
+
+    /// Shows the window without stealing keyboard focus from the active app.
+    private func presentNotification(window: NSWindow) {
+        window.orderFrontRegardless()
+    }
+
+    // MARK: - Idle Reminder Timer
+
+    private func startIdleReminderTimer() {
+        cancelIdleReminderTimer()
+        idleReminderTimer = Timer.scheduledTimer(withTimeInterval: idleReminderDelay, repeats: false) { [weak self] _ in
+            self?.showIdleReminder()
+        }
+    }
+
+    private func cancelIdleReminderTimer() {
+        idleReminderTimer?.invalidate()
+        idleReminderTimer = nil
+    }
+
+    private func showIdleReminder() {
+        idleReminderTimer = nil
+
+        let idleEvent = ClaudeEvent(
+            type: .notification,
+            matcher: .idlePrompt,
+            taskSummary: "Claude is waiting for your input"
+        )
+        showNotificationWindow(for: idleEvent, isIdleReminder: true)
     }
 
 }
